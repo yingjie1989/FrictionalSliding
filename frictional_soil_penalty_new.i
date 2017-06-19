@@ -182,7 +182,12 @@
   [../]
 []
 
-#[Postprocessors]
+[Postprocessors]
+    [./nonlinear_its]
+      type = SideAverageValue
+      variable = contact_traction
+      execute_on = timestep_end
+    [../]
 #  [./nonlinear_its]
 #    type = NumNonlinearIterations
 #    execute_on = timestep_end
@@ -197,7 +202,7 @@
 #    variable = contact_pressure
 #    nodeid = 222
 #  [../]
-#[]
+[]
 
 
 [Postprocessors]
