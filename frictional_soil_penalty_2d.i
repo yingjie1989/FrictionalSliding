@@ -10,7 +10,7 @@
 
 [Mesh]
   file = 2_blocks_2d.e
-  patch_size = 10
+  patch_size = 20
 []
 
 [GlobalParams]
@@ -286,7 +286,8 @@
 
 [Outputs]
   file_base = frictional_concretesoil2d_out
-  interval = 1
+  interval = 10
+  print_linear_residuals = false
   [./exodus]
     type = Exodus
     elemental_as_nodal = true
@@ -306,8 +307,9 @@
     friction_coefficient = 0.15
     normalize_penalty = true
     formulation = augmented_lagrange
+#    formulation = tangential_penalty
     system = constraint
-    normal_smoothing_distance = 0.1
+#    normal_smoothing_distance = 0.1
     penetration_tolerance = 1e-5
     stickking_tolerance = 1e-3
     frictionalforce_tolerance = 1e-3
@@ -319,7 +321,7 @@
 # type = ReferenceResidualProblem
   master = '2'
   slave = '3'
-  penalty = 1e+7
+  penalty = 1e+8
   normalize_penalty = true
   disp_x = disp_x
   disp_y = disp_y
