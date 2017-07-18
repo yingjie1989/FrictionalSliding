@@ -10,7 +10,7 @@
 
 [Mesh]
   file = 2_blocks_2d.e
-  patch_size = 1
+  patch_size = 10
 []
 
 [GlobalParams]
@@ -27,6 +27,8 @@
 []
 
 [AuxVariables]
+  [./contact_traction]
+  [../]
   [./penetration]
   [../]
   [./vel_x]
@@ -37,10 +39,10 @@
   [../]
   [./accel_y]
   [../]
-#  [./inc_slip_x]
-#  [../]
-#  [./inc_slip_y]
-#  [../]
+  [./saved_x]
+  [../]
+  [./saved_y]
+  [../]
 #  [./accum_slip_x]
 #  [../]
 #  [./accum_slip_y]
@@ -70,41 +72,16 @@
     gamma = 0.5
     eta=0.0
   [../]
-  [./gravity_z]
-    type = Gravity
-    variable = disp_y
-    value = -9.81
-  [../]
 []
 
 
 
 [AuxKernels]
-#  [./zeroslip_x]
-#    type = ConstantAux
-#    variable = inc_slip_x
-#    boundary = 3
-#    execute_on = timestep_begin
-#    value = 0.0
-#  [../]
-#  [./zeroslip_y]
-#    type = ConstantAux
-#    variable = inc_slip_y
-#    boundary = 3
-#    execute_on = timestep_begin
-#    value = 0.0
-#  [../]
-#  [./accum_slip_x]
-#    type = AccumulateAux
-#    variable = accum_slip_x
-#    accumulate_from_variable = inc_slip_x
-#    execute_on = timestep_end
-#  [../]
-#  [./accum_slip_y]
-#    type = AccumulateAux
-#    variable = accum_slip_y
-#    accumulate_from_variable = inc_slip_y
-#    execute_on = timestep_end
+#  [./contact_traction]
+#    type = ContactTractionAux
+#    variable = contact_traction
+#    paired_boundary = 2
+#    component = 0
 #  [../]
   [./penetration]
     type = PenetrationAux
@@ -144,6 +121,15 @@
   [../]
 []
 
+[Postprocessors]
+    [./nonlinear_its]
+      type = SideAverageValue
+      boundary = 3
+      variable = contact_traction
+      execute_on = timestep_end
+    [../]
+[]
+
 #[Postprocessors]
 #  [./nonlinear_its]
 #    type = NumNonlinearIterations
@@ -161,12 +147,35 @@
 #  [../]
 #[]
 
+
+[Functions]
+  active = 'tfunc xfunc'
+  [./tfunc]
+    type = ParsedFunction
+    value = 'alpha*t'
+    vars = 'alpha'
+    vals = '1.05948e5'
+  [../]
+  [./xfunc]
+      type = ParsedFunction
+      value = 'alpha*sin(pi*t)'
+      vars = 'alpha'
+      vals = '1.05948e6'
+  [../]
+[]
+
 [BCs]
-  [./slave_left_x]
-    type = NeumannBC
+  [./force_x]
+    type = FunctionNeumannBC
     variable = disp_x
     boundary = 9
-    value = 1.29e6
+    function = tfunc
+  [../]
+  [./top_y]
+    type = NeumannBC
+    variable = disp_y
+    boundary = 4
+    value = -9.4176e+4
   [../]
   [./bottom_x]
     type = PresetBC
@@ -198,13 +207,13 @@
   [./Elasticity_tensor_soil]
     type = ComputeIsotropicElasticityTensor
     block = 1
-    youngs_modulus = 1.3e9
+    youngs_modulus = 1.3e+9
     poissons_ratio = 0.45
   [../]
   [./Elasticity_tensor_concrete]
     type = ComputeIsotropicElasticityTensor
     block = 2
-    youngs_modulus = 2e10
+    youngs_modulus = 2e+10
     poissons_ratio = 0.25
   [../]
   [./strain_soil]
@@ -257,18 +266,17 @@
 #  petsc_options_value = 'asm     lu    20    101'
 
   petsc_options_iname = '-pc_type -pc_factor_mat_solver_package'
-  petsc_options_value = 'lu     superlu_dist'  
+  petsc_options_value = 'lu     mumps'
 
   line_search = 'none'
 
   l_max_its = 100
   nl_max_its = 1000
   dt = 0.01
-  end_time = 1.0
-  num_steps = 1000
+  end_time = 2.0
   l_tol = 1e-6
-  nl_rel_tol = 1e-10
-  nl_abs_tol = 1e-6
+  nl_rel_tol = 1e-5
+  nl_abs_tol = 1e-5
   dtmin = 1e-5
   [./Predictor]
     type = SimplePredictor
@@ -294,10 +302,29 @@
     slave = 3
     master = 2
     model = coulomb
-    penalty = 1e+7
+    penalty = 1e+8
     friction_coefficient = 0.15
-    formulation = tangential_penalty
+    normalize_penalty = true
+    formulation = augmented_lagrange
     system = constraint
-#    normal_smoothing_distance = 0.1
+    normal_smoothing_distance = 0.1
+    penetration_tolerance = 1e-5
+    stickking_tolerance = 1e-3
+    frictionalforce_tolerance = 1e-3
   [../]
+[]
+
+[Problem]
+  type = ContactAugLagMulProblem
+# type = ReferenceResidualProblem
+  master = '2'
+  slave = '3'
+  penalty = 1e+7
+  normalize_penalty = true
+  disp_x = disp_x
+  disp_y = disp_y
+  contact_lagmul_tolerance_factor = 1.0
+  solution_variables = 'disp_x disp_y'
+  reference_residual_variables = 'saved_x saved_y'
+  contact_reference_residual_variables = 'saved_x saved_y'
 []
